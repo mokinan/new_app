@@ -1,4 +1,10 @@
+<p align="center">
+  <a href="https://github.com/mokinan/new_app"><img src="https://raw.githubusercontent.com/mokinan/new_app/main/docs/images/hero.png" alt="new_app — one Flutter app, five state-management architectures" width="100%"></a>
+</p>
+
 # new_app — Bloc
+
+[← All branches and comparison](https://github.com/mokinan/new_app) · [Screenshots](https://github.com/mokinan/new_app#see-it-run)
 
 A production-ready Flutter starter: Clean Architecture, Dio with token refresh,
 secure storage, responsive layouts, Arabic RTL and a full test suite.
