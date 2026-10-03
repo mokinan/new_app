@@ -120,7 +120,8 @@ class _RegisterViewState extends State<_RegisterView> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
-                  validator: (v) => Validators.email(v) ?? state.fieldErrors['email'],
+                  // Read the live state: validate() runs from the listener, before a rebuild.
+                  validator: (v) => Validators.email(v) ?? bloc.state.fieldErrors['email'],
                   onChanged: (_) => bloc.add(const RegisterEmailChanged()),
                   onFieldSubmitted: (_) => _phoneFocus.requestFocus(),
                 ),
