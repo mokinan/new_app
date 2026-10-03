@@ -111,7 +111,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
-                validator: (v) => Validators.email(v) ?? state.fieldErrors['email'],
+                // Read the live state: validate() runs from the listener, before a rebuild.
+                validator: (v) => Validators.email(v) ?? ref.read(registerProvider).fieldErrors['email'],
                 onChanged: (_) => notifier.emailChanged(),
                 onFieldSubmitted: (_) => _phoneFocus.requestFocus(),
               ),
