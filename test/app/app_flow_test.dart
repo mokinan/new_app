@@ -107,7 +107,12 @@ void main() {
       final app = await openRegister(tester);
       await fill(app, email: MockBackend.demoEmail);
       await app.tapText('إنشاء الحساب');
-      expect(find.text('هذا البريد مسجل مسبقًا.'), findsWidgets);
+      const message = 'هذا البريد مسجل مسبقًا.';
+      // Under the field itself, not only in the banner.
+      expect(
+        find.descendant(of: find.byKey(const Key('register-email')), matching: find.text(message)),
+        findsOneWidget,
+      );
     });
 
     testWidgets('creates the account and opens home', (tester) async {
