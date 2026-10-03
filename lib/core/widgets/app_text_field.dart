@@ -85,6 +85,7 @@ class AppPasswordField extends StatefulWidget {
     this.hint,
     this.textInputAction,
     this.validator,
+    this.onChanged,
     this.onFieldSubmitted,
     this.focusNode,
   });
@@ -94,6 +95,7 @@ class AppPasswordField extends StatefulWidget {
   final String? hint;
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
   final void Function(String)? onFieldSubmitted;
   final FocusNode? focusNode;
 
@@ -114,6 +116,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
       obscureText: !_visible,
       textInputAction: widget.textInputAction,
       validator: widget.validator,
+      onChanged: widget.onChanged,
       onFieldSubmitted: widget.onFieldSubmitted,
       focusNode: widget.focusNode,
       autofillHints: const [AutofillHints.password],
