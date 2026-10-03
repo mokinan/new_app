@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:new_app/app/router.dart';
 import 'package:new_app/core/network/mock/mock_backend.dart';
@@ -10,18 +9,21 @@ import 'package:new_app/core/utils/validators.dart';
 import 'package:new_app/core/widgets/app_text_field.dart';
 import 'package:new_app/core/widgets/auth_layout.dart';
 import 'package:new_app/core/widgets/feedback_widgets.dart';
-import 'package:new_app/features/login/login_cubit.dart';
+import 'package:new_app/features/login/login_notifier.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      BlocProvider(create: (context) => LoginCubit(context.read(), context.read()), child: const _LoginView());
+  Widget build(BuildContext context) => ChangeNotifierProvider(
+    create: (context) => LoginNotifier(context.read(), context.read()),
+    child: const _LoginView(),
+  );
 }
 
 /// Form objects (controllers, focus nodes, form key) are UI state with the
-/// widget's lifetime, so they live here — the cubit holds only app state.
+/// widget's lifetime, so they live here — the notifier holds only app state.
 class _LoginView extends StatefulWidget {
   const _LoginView();
 
@@ -46,7 +48,7 @@ class _LoginViewState extends State<_LoginView> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    context.read<LoginCubit>().submit(email: _email.text, password: _password.text);
+    context.read<LoginNotifier>().submit(email: _email.text, password: _password.text);
   }
 
   @override
@@ -87,8 +89,8 @@ class _LoginViewState extends State<_LoginView> {
                 onFieldSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: AppDimensions.lg),
-              BlocBuilder<LoginCubit, LoginState>(
-                builder: (context, state) => Column(
+              Consumer<LoginNotifier>(
+                builder: (context, state, _) => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (state.error != null) ErrorBanner(message: state.error!),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:new_app/core/theme/app_colors.dart';
 import 'package:new_app/core/theme/app_dimensions.dart';
 import 'package:new_app/core/theme/app_text_styles.dart';
-import 'package:new_app/features/session/session_cubit.dart';
-import 'package:new_app/features/settings/settings_cubit.dart';
+import 'package:new_app/features/session/session_notifier.dart';
+import 'package:new_app/features/settings/settings_notifier.dart';
+import 'package:provider/provider.dart';
 
 /// Placeholder home — replace with your first real feature. Shows how a
 /// screen reads app-wide state (session, settings) with `context.select`.
@@ -13,20 +13,20 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.select((SessionCubit c) => c.state.user);
-    final isDarkMode = context.select((SettingsCubit c) => c.state.isDarkMode);
+    final user = context.select((SessionNotifier s) => s.user);
+    final isDarkMode = context.select((SettingsNotifier s) => s.isDarkMode);
     return Scaffold(
       appBar: AppBar(
         title: const Text('الرئيسية'),
         actions: [
           IconButton(
             tooltip: 'الوضع الليلي',
-            onPressed: context.read<SettingsCubit>().toggleDarkMode,
+            onPressed: context.read<SettingsNotifier>().toggleDarkMode,
             icon: Icon(isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
           ),
           IconButton(
             tooltip: 'تسجيل الخروج',
-            onPressed: context.read<SessionCubit>().logout,
+            onPressed: context.read<SessionNotifier>().logout,
             icon: const Icon(Icons.logout_rounded),
           ),
         ],

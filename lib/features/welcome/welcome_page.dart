@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:new_app/app/notifier_listener.dart';
 import 'package:new_app/app/router.dart';
 import 'package:new_app/core/theme/app_colors.dart';
 import 'package:new_app/core/theme/app_dimensions.dart';
 import 'package:new_app/core/theme/app_text_styles.dart';
 import 'package:new_app/core/widgets/onboarding_widgets.dart';
 import 'package:new_app/core/widgets/responsive_builder.dart';
-import 'package:new_app/features/welcome/welcome_cubit.dart';
+import 'package:new_app/features/welcome/welcome_notifier.dart';
+import 'package:provider/provider.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocProvider(
-    create: (context) => WelcomeCubit(context.read(), context.read())..load(),
-    child: const _WelcomeView(),
+  Widget build(BuildContext context) => ChangeNotifierProvider(
+    create: (context) => WelcomeNotifier(context.read(), context.read())..load(),
+    child: NotifierListener<WelcomeNotifier>(
+      listener: (context, welcome) {
+        if (welcome.finished) context.go(AppRoutes.login);
+      },
+      child: const _WelcomeView(),
+    ),
   );
 }
 
@@ -35,78 +41,70 @@ class _WelcomeViewState extends State<_WelcomeView> {
     super.dispose();
   }
 
-  Future<void> _next(WelcomeState state) async {
-    if (state.isLastPage) return context.read<WelcomeCubit>().finish();
+  Future<void> _next(WelcomeNotifier welcome) async {
+    if (welcome.isLastPage) return welcome.finish();
     await _pageController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<WelcomeCubit>();
+    final welcome = context.watch<WelcomeNotifier>();
+    if (welcome.isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    final pages = PageView.builder(
+      controller: _pageController,
+      onPageChanged: welcome.pageChanged,
+      itemCount: welcome.slides.length,
+      itemBuilder: (_, i) => SlideContent(slide: welcome.slides[i]),
+    );
+    final footer = OnboardingFooter(
+      count: welcome.slides.length,
+      current: welcome.page,
+      isLastPage: welcome.isLastPage,
+      onNext: () => _next(welcome),
+    );
+    final skip = welcome.isLastPage
+        ? const SizedBox(height: 48)
+        : TextButton(
+            onPressed: welcome.finish,
+            child: Text('تخطي', style: AppTextStyles.labelLarge.copyWith(color: AppColors.grey500)),
+          );
+
     return Scaffold(
-      body: BlocConsumer<WelcomeCubit, WelcomeState>(
-        listenWhen: (previous, current) => !previous.finished && current.finished,
-        listener: (context, _) => context.go(AppRoutes.login),
-        builder: (context, state) {
-          if (state.isLoading) return const Center(child: CircularProgressIndicator());
-
-          final pages = PageView.builder(
-            controller: _pageController,
-            onPageChanged: cubit.pageChanged,
-            itemCount: state.slides.length,
-            itemBuilder: (_, i) => SlideContent(slide: state.slides[i]),
-          );
-          final footer = OnboardingFooter(
-            count: state.slides.length,
-            current: state.page,
-            isLastPage: state.isLastPage,
-            onNext: () => _next(state),
-          );
-          final skip = state.isLastPage
-              ? const SizedBox(height: 48)
-              : TextButton(
-                  onPressed: cubit.finish,
-                  child: Text('تخطي', style: AppTextStyles.labelLarge.copyWith(color: AppColors.grey500)),
-                );
-
-          return ResponsiveBuilder(
-            mobile: (_, _) => SafeArea(
-              child: Column(
-                children: [
-                  Align(alignment: AlignmentDirectional.centerEnd, child: skip),
-                  Expanded(child: pages),
-                  footer,
-                ],
+      body: ResponsiveBuilder(
+        mobile: (_, _) => SafeArea(
+          child: Column(
+            children: [
+              Align(alignment: AlignmentDirectional.centerEnd, child: skip),
+              Expanded(child: pages),
+              footer,
+            ],
+          ),
+        ),
+        tablet: (_, _) => Row(
+          children: [
+            const Expanded(
+              child: DecoratedBox(
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryDark])),
+                child: Center(child: Icon(Icons.point_of_sale_rounded, size: 120, color: AppColors.white)),
               ),
             ),
-            tablet: (_, _) => Row(
-              children: [
-                const Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-                    ),
-                    child: Center(child: Icon(Icons.point_of_sale_rounded, size: 120, color: AppColors.white)),
+            Expanded(
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDimensions.xl),
+                  child: Column(
+                    children: [
+                      Align(alignment: AlignmentDirectional.centerEnd, child: skip),
+                      Expanded(child: pages),
+                      footer,
+                    ],
                   ),
                 ),
-                Expanded(
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppDimensions.xl),
-                      child: Column(
-                        children: [
-                          Align(alignment: AlignmentDirectional.centerEnd, child: skip),
-                          Expanded(child: pages),
-                          footer,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
