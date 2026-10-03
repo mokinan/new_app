@@ -1,137 +1,102 @@
 import 'dart:async';
+
 import 'package:dio/dio.dart';
-import 'package:get/get.dart' hide Response;
-import '../../config/app_config.dart';
-import '../../services/auth_service.dart';
-import '../../services/storage_service.dart';
-import '../api_endpoints.dart';
-import '../../../app/routes/app_routes.dart';
+import 'package:new_app/core/network/api_endpoints.dart';
+import 'package:new_app/core/services/storage_service.dart';
 
+/// Attaches the access token and refreshes it on 401.
+///
+/// Refresh is **single-flight**: while one refresh is running, other 401s
+/// wait for it and then replay with the new token — refresh tokens usually
+/// rotate, so a second concurrent refresh would fail and log the user out.
+///
+/// [onSessionExpired] is called only when the server rejects the refresh
+/// token; each branch wires it to its own logout/navigation.
 class AuthInterceptor extends Interceptor {
-  // ─── Refresh lock ─────────────────────────────────────────
-  // Prevents multiple simultaneous refresh calls.
-  // All 401 requests while a refresh is in-flight are queued and retried.
-  bool _isRefreshing = false;
-  final _queue = <({
-    RequestOptions options,
-    ErrorInterceptorHandler handler
-  })>[];
+  AuthInterceptor({
+    required Dio dio,
+    required Dio refreshDio,
+    required StorageService storage,
+    required void Function() onSessionExpired,
+  }) : _dio = dio,
+       _refreshDio = refreshDio,
+       _storage = storage,
+       _onSessionExpired = onSessionExpired;
 
-  final _storage = StorageService.instance;
+  final Dio _dio;
+  final Dio _refreshDio;
+  final StorageService _storage;
+  final void Function() _onSessionExpired;
 
-  // ─── Attach token ─────────────────────────────────────────
+  Future<String?>? _refreshing;
+
+  static const _retriedKey = 'auth_retried';
+
   @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
+  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     final token = await _storage.getAccessToken();
-    if (token != null) {
-      options.headers['Authorization'] = 'Bearer $token';
-    }
+    if (token != null) options.headers['Authorization'] = 'Bearer $token';
     handler.next(options);
   }
 
-  // ─── Handle 401 → refresh ─────────────────────────────────
   @override
-  Future<void> onError(
-    DioException err,
-    ErrorInterceptorHandler handler,
-  ) async {
-    final is401 = err.response?.statusCode == 401;
-    final isRefreshCall =
-        err.requestOptions.path.contains(ApiEndpoints.refreshToken);
-
-    if (!is401 || isRefreshCall) {
-      handler.next(err);
-      return;
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    final request = err.requestOptions;
+    final isUnauthorized = err.response?.statusCode == 401;
+    final isAuthCall = request.path == ApiEndpoints.refreshToken || request.path == ApiEndpoints.login;
+    if (!isUnauthorized || isAuthCall || request.extra[_retriedKey] == true) {
+      return handler.next(err);
     }
 
-    // Another refresh is already in-flight — queue this request
-    if (_isRefreshing) {
-      _queue.add((options: err.requestOptions, handler: handler));
-      return;
-    }
+    final usedToken = (request.headers['Authorization'] as String?)?.replaceFirst('Bearer ', '');
+    final current = await _storage.getAccessToken();
+    // Another request already refreshed while this one was in flight.
+    final token = current != null && current != usedToken
+        ? current
+        : await (_refreshing ??= _refresh().whenComplete(() => _refreshing = null));
 
-    _isRefreshing = true;
+    if (token == null) return handler.next(err);
 
     try {
-      final refreshToken = await _storage.getRefreshToken();
+      request
+        ..headers['Authorization'] = 'Bearer $token'
+        ..extra[_retriedKey] = true;
+      handler.resolve(await _dio.fetch<dynamic>(request));
+    } on DioException catch (e) {
+      handler.next(e);
+    }
+  }
 
-      if (refreshToken == null) {
-        await _forceLogout();
-        handler.next(err);
-        return;
-      }
-
-      // Use a plain Dio (no interceptors) to avoid loops
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: AppConfig.to.baseUrl,
-          headers: {'Accept': 'application/json'},
-        ),
-      );
-
-      final refreshResponse = await refreshDio.post(
+  /// Returns the new access token, or `null` if the session is over.
+  Future<String?> _refresh() async {
+    final refreshToken = await _storage.getRefreshToken();
+    if (refreshToken == null) {
+      _expire();
+      return null;
+    }
+    try {
+      final response = await _refreshDio.post<Map<String, dynamic>>(
         ApiEndpoints.refreshToken,
         data: {'refresh_token': refreshToken},
       );
-
-      final data        = refreshResponse.data as Map<String, dynamic>;
-      final newAccess   = data['access_token'] as String;
-      final newRefresh  = data['refresh_token'] as String;
-      final expiresIn   = data['expires_in'] as int? ?? 3600;
-      final newExpiry   = DateTime.now().add(Duration(seconds: expiresIn));
-
-      // Persist new tokens
-      await AuthService.to.updateTokens(
-        accessToken:  newAccess,
-        refreshToken: newRefresh,
-        expiresAt:    newExpiry,
+      final data = response.data!;
+      final access = data['access_token'] as String;
+      await _storage.saveTokens(
+        accessToken: access,
+        refreshToken: data['refresh_token'] as String,
+        expiresAt: DateTime.now().add(Duration(seconds: data['expires_in'] as int? ?? 3600)),
       );
-
-      // Retry original request
-      final retried = await _retry(err.requestOptions, newAccess);
-      handler.resolve(retried);
-
-      // Drain the queue
-      for (final req in _queue) {
-        try {
-          final retriedQueued = await _retry(req.options, newAccess);
-          req.handler.resolve(retriedQueued);
-        } catch (e) {
-          req.handler.next(err);
-        }
-      }
-    } catch (_) {
-      // Refresh failed — clear everything and send to login
-      for (final req in _queue) {
-        req.handler.next(err);
-      }
-      await _forceLogout();
-      handler.next(err);
-    } finally {
-      _queue.clear();
-      _isRefreshing = false;
+      return access;
+    } on DioException catch (e) {
+      // Only a definitive rejection ends the session; a network blip does not.
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) _expire();
+      return null;
     }
   }
 
-  // ─── Helpers ──────────────────────────────────────────────
-  Future<Response<dynamic>> _retry(
-    RequestOptions options,
-    String newToken,
-  ) {
-    final opts = options.copyWith(
-      headers: {
-        ...options.headers,
-        'Authorization': 'Bearer $newToken',
-      },
-    );
-    return Dio().fetch(opts);
-  }
-
-  Future<void> _forceLogout() async {
-    await AuthService.to.logout();
-    Get.offAllNamed(AppRoutes.login);
+  void _expire() {
+    unawaited(_storage.clearAll());
+    _onSessionExpired();
   }
 }

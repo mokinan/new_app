@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
+import 'package:new_app/core/theme/app_colors.dart';
 
 class AppTextStyles {
   AppTextStyles._();
@@ -142,13 +142,8 @@ class AppTextStyles {
   );
 
   // ─── Helpers ──────────────────────────────────────────────
-  static TextStyle withColor(TextStyle style, Color color) =>
-      style.copyWith(color: color);
+  static TextStyle withColor(TextStyle style, Color color) => style.copyWith(color: color);
 
   static TextStyle primaryText(TextStyle style, {bool isDark = false}) =>
-      style.copyWith(
-        color: isDark
-            ? AppColors.textPrimaryDark
-            : AppColors.textPrimaryLight,
-      );
+      style.copyWith(color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
 }

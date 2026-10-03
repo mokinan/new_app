@@ -1,17 +1,10 @@
 import 'package:flutter/material.dart';
-import '../utils/device_type.dart';
+import 'package:new_app/core/utils/device_type.dart';
 
 /// Builds different layouts based on screen size.
 /// Falls back to the next smaller layout if a specific one is not provided.
 class ResponsiveBuilder extends StatelessWidget {
-  const ResponsiveBuilder({
-    super.key,
-    required this.mobile,
-    this.watch,
-    this.tablet,
-    this.desktop,
-    this.tv,
-  });
+  const ResponsiveBuilder({super.key, required this.mobile, this.watch, this.tablet, this.desktop, this.tv});
 
   final Widget Function(BuildContext, BoxConstraints) mobile;
   final Widget Function(BuildContext, BoxConstraints)? watch;
@@ -25,11 +18,11 @@ class ResponsiveBuilder extends StatelessWidget {
       builder: (ctx, constraints) {
         final device = DeviceTypeHelper.fromWidth(constraints.maxWidth);
         return switch (device) {
-          DeviceType.tv      => (tv ?? desktop ?? tablet ?? mobile)(ctx, constraints),
+          DeviceType.tv => (tv ?? desktop ?? tablet ?? mobile)(ctx, constraints),
           DeviceType.desktop => (desktop ?? tablet ?? mobile)(ctx, constraints),
-          DeviceType.tablet  => (tablet ?? mobile)(ctx, constraints),
-          DeviceType.watch   => (watch ?? mobile)(ctx, constraints),
-          DeviceType.mobile  => mobile(ctx, constraints),
+          DeviceType.tablet => (tablet ?? mobile)(ctx, constraints),
+          DeviceType.watch => (watch ?? mobile)(ctx, constraints),
+          DeviceType.mobile => mobile(ctx, constraints),
         };
       },
     );
@@ -38,13 +31,7 @@ class ResponsiveBuilder extends StatelessWidget {
 
 /// Simple responsive value — returns different values per breakpoint.
 class Responsive<T> {
-  const Responsive({
-    required this.mobile,
-    this.watch,
-    this.tablet,
-    this.desktop,
-    this.tv,
-  });
+  const Responsive({required this.mobile, this.watch, this.tablet, this.desktop, this.tv});
 
   final T mobile;
   final T? watch;
@@ -55,11 +42,11 @@ class Responsive<T> {
   T resolve(BuildContext context) {
     final device = DeviceTypeHelper.of(context);
     return switch (device) {
-      DeviceType.tv      => tv ?? desktop ?? tablet ?? mobile,
+      DeviceType.tv => tv ?? desktop ?? tablet ?? mobile,
       DeviceType.desktop => desktop ?? tablet ?? mobile,
-      DeviceType.tablet  => tablet ?? mobile,
-      DeviceType.watch   => watch ?? mobile,
-      DeviceType.mobile  => mobile,
+      DeviceType.tablet => tablet ?? mobile,
+      DeviceType.watch => watch ?? mobile,
+      DeviceType.mobile => mobile,
     };
   }
 }
@@ -67,10 +54,10 @@ class Responsive<T> {
 /// Shorthand for getting the current [DeviceType] from context.
 extension ResponsiveContext on BuildContext {
   DeviceType get deviceType => DeviceTypeHelper.of(this);
-  bool get isMobile  => deviceType.isMobile;
-  bool get isTablet  => deviceType.isTablet;
+  bool get isMobile => deviceType.isMobile;
+  bool get isTablet => deviceType.isTablet;
   bool get isDesktop => deviceType.isDesktop;
-  bool get isTv      => deviceType.isTv;
+  bool get isTv => deviceType.isTv;
   bool get isCompact => deviceType.isCompact;
   bool get isExpanded => deviceType.isExpanded;
 }

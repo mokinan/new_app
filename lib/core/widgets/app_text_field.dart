@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_dimensions.dart';
-import '../theme/app_text_styles.dart';
+import 'package:new_app/core/theme/app_colors.dart';
+import 'package:new_app/core/theme/app_dimensions.dart';
+import 'package:new_app/core/theme/app_text_styles.dart';
 
 class AppTextField extends StatelessWidget {
   const AppTextField({
@@ -47,29 +47,26 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: AppTextStyles.labelMedium
-                .copyWith(color: AppColors.textPrimaryLight)),
+        Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textPrimaryLight)),
         const SizedBox(height: 6),
         TextFormField(
-          controller:       controller,
-          focusNode:        focusNode,
-          keyboardType:     keyboardType,
-          textInputAction:  textInputAction,
-          obscureText:      obscureText,
-          enabled:          enabled,
-          maxLines:         maxLines,
-          inputFormatters:  inputFormatters,
-          validator:        validator,
-          onChanged:        onChanged,
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          obscureText: obscureText,
+          enabled: enabled,
+          maxLines: maxLines,
+          inputFormatters: inputFormatters,
+          validator: validator,
+          onChanged: onChanged,
           onFieldSubmitted: onFieldSubmitted,
-          autofillHints:    autofillHints,
-          style:            AppTextStyles.bodyLarge,
+          autofillHints: autofillHints,
+          style: AppTextStyles.bodyLarge,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, size: AppDimensions.iconMd,
-                    color: AppColors.grey400)
+                ? Icon(prefixIcon, size: AppDimensions.iconMd, color: AppColors.grey400)
                 : null,
             suffixIcon: suffixIcon,
           ),
@@ -110,16 +107,16 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
   @override
   Widget build(BuildContext context) {
     return AppTextField(
-      controller:      widget.controller,
-      label:           widget.label,
-      hint:            widget.hint,
-      prefixIcon:      Icons.lock_outline_rounded,
-      obscureText:     !_visible,
+      controller: widget.controller,
+      label: widget.label,
+      hint: widget.hint,
+      prefixIcon: Icons.lock_outline_rounded,
+      obscureText: !_visible,
       textInputAction: widget.textInputAction,
-      validator:       widget.validator,
+      validator: widget.validator,
       onFieldSubmitted: widget.onFieldSubmitted,
-      focusNode:       widget.focusNode,
-      autofillHints:   const [AutofillHints.password],
+      focusNode: widget.focusNode,
+      autofillHints: const [AutofillHints.password],
       suffixIcon: IconButton(
         icon: Icon(
           _visible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
