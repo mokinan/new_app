@@ -10,7 +10,7 @@ enum AppEnvironment { mock, development, staging, production }
 /// Pick the environment at build time:
 /// `flutter run --dart-define=ENV=staging`
 class AppConfig {
-  const AppConfig({this.environment = AppEnvironment.mock});
+  const AppConfig({this.environment = AppEnvironment.mock, this.splashDelay = const Duration(seconds: 2)});
 
   /// Reads `--dart-define=ENV=...`; defaults to [AppEnvironment.mock].
   factory AppConfig.fromEnvironment() {
@@ -21,6 +21,9 @@ class AppConfig {
   }
 
   final AppEnvironment environment;
+
+  /// Minimum time the splash branding stays visible (zero in tests).
+  final Duration splashDelay;
 
   // ─── API ──────────────────────────────────────────────────
   String get baseUrl => switch (environment) {
